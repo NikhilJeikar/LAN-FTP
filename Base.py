@@ -3,6 +3,7 @@ import Server
 
 BUFFER = 1024 * 4
 EOS = "--||--"
+Port = 13579
 
 IP = input("Enter the server local ip: ")
 PORT = int(input("Enter the port number: "))
