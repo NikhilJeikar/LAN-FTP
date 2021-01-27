@@ -236,7 +236,7 @@ def Start():
         client, address = Sock.accept()
         data = client.recv(BUFFER_SIZE).decode()
         if data == "code":
-            ClientFile = open('Client.py', 'r', encoding='utf-8')
+            ClientFile = open('__Client.py', 'r', encoding='utf-8')
             while True:
                 Byte = ClientFile.read(BUFFER_SIZE)
                 if not Byte:
