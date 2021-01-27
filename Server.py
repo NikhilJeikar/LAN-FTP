@@ -2,8 +2,8 @@ import socket
 import os
 import re
 
+from Thread import Thread
 from os import name
-from _thread import start_new_thread
 
 
 def UserRefresh():
@@ -98,14 +98,24 @@ def Dir(Client,Path,User):
 
 
 def Stat(Client,User):
-    Client.send()
+    VS = 0
+    for p, d, f in os.walk(BASE + '/' + User + '/'):
+        for f1 in f:
+            fp = os.path.join(p, f1)
+            VS = VS + os.path.getsize(fp)
+    VS = VS / (1024 * 1024 * 1024)
+    ID = Users.index(User)
+    Storage = Storages[ID]
+    Client.send(f"{round(VS,2)} GB is used out of {Storage}GB".encode())
+    Client.send(EOS.encode())
 
 
 # Constant
 OS = name
 SERVER_HOST = ""
-SERVER_PORT = 24680
+SERVER_PORT = None
 BUFFER_SIZE = 1024 * 4
+Max = 10
 SEPARATOR = "-|+0+|-"
 EOS = "++--++"
 BASE = "/media/home/Data"
@@ -115,16 +125,9 @@ Users = []
 Passwords = []
 Storages = []
 
-ReadUserFile = open('UserData.txt', 'r', encoding='utf-8')
 WriteUserFile = open('UserData.txt', 'a', encoding='utf-8')
+ReadUserFile = open('UserData.txt', 'r', encoding='utf-8')
 UserRefresh()
-
-Sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-Sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-Sock.bind((SERVER_HOST, SERVER_PORT))
-Sock.listen(10)
-
-print(f"[*] Listening as {SERVER_HOST}:{SERVER_PORT}")
 
 
 def Command(Client, Address):
@@ -159,11 +162,11 @@ def Command(Client, Address):
                     if lis[2] == Passwords[Use]:
                         User = lis[1]
                         Storage = Storages[Use]
-                        client.send(f"bool{SEPARATOR}true{SEPARATOR}true".encode())
+                        Client.send(f"bool{SEPARATOR}true{SEPARATOR}true".encode())
                     else:
-                        client.send(f"bool{SEPARATOR}true{SEPARATOR}false".encode())
+                        Client.send(f"bool{SEPARATOR}true{SEPARATOR}false".encode())
                 else:
-                    client.send(f"bool{SEPARATOR}false".encode())
+                    Client.send(f"bool{SEPARATOR}false".encode())
             elif lis[0] == "s_file" and User is not None:
                 Path = lis[1].rstrip()
                 FileName = lis[2]
@@ -213,13 +216,38 @@ def Command(Client, Address):
                     Client.send(f"bool{SEPARATOR}true".encode())
                 except FileExistsError:
                     Client.send(f"bool{SEPARATOR}false".encode())
+            elif lis[0] == "stat" and User is not None:
+                Stat(Client,User)
             else:
                 pass
         else:
             break
 
 
-while True:
-    client, address = Sock.accept()
-    print(f"[+] {address} is connecting.")
-    start_new_thread(Command, (client, address))
+def Start():
+
+    Sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    Sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    Sock.bind((SERVER_HOST, SERVER_PORT))
+    Sock.listen(Max)
+
+    print(f"[*] Listening as {SERVER_HOST}:{SERVER_PORT}")
+    while True:
+        client, address = Sock.accept()
+        data = client.recv(BUFFER_SIZE).decode()
+        if data == "code":
+            ClientFile = open('Client.py', 'r', encoding='utf-8')
+            while True:
+                Byte = ClientFile.read(BUFFER_SIZE)
+                if not Byte:
+                    ClientFile.close()
+                    break
+
+                client.send(Byte.encode())
+            client.send("--||--".encode())
+        print(f"[+] {address} is connecting.")
+        t = Thread(target=Command, args=(client, address),daemon=True)
+        t.start()
+        t.join()
+
+

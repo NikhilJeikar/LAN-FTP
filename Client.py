@@ -1,13 +1,17 @@
-import socket
-import os
+import getopt
 import hashlib
+import os
+import socket
+import sys
 import tqdm
+import inspect
+
 from os import name, system
 
 OS = name
 
-PORT = 24680
-HOST = "192.168.1.15"
+PORT = None
+HOST = None
 BUFFER = 1024 * 4
 SEPARATOR = "-|+0+|-"
 EOS = "++--++"
@@ -16,8 +20,14 @@ CD = ""
 User = None
 UserVar = None
 
-Socket = socket.socket()
-Socket.connect((HOST, PORT))
+
+def Clean():
+    dir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+    file = os.path.basename(__file__)
+    if OS == 'nt':
+        os.remove(f"{dir}\\{file}")
+    else:
+        os.remove(f"{dir}/{file}")
 
 
 def ErrorHandler(data):
@@ -137,19 +147,19 @@ def Login():
     user_var = None
     user = None
 
-    print("""Commands \n\tUsername (U)\n\tPassword (P) \n\tStatus (S) \n\tLogin (L) \n\tBack (B) \n\tExit (E)""")
+    print("Commands \n\tUsername (U)\n\tPassword (P) \n\tStatus (S) \n\tLogin (L) \n\tBack (B) \n\tExit (E)")
 
     def Username():
         nonlocal user, user_var
         user_var = input("Username: ")
         user = user_var
-        user_var = user_var.encode(encoding='utf-8')
+        user_var = user_var.encode(encoding="utf-8")
         user_var = hashlib.sha512(user_var).hexdigest()
 
     def Password():
         nonlocal PasswordVar
         PasswordVar = input("Password: ")
-        PasswordVar = PasswordVar.encode(encoding='utf-8')
+        PasswordVar = PasswordVar.encode(encoding="utf-8")
         PasswordVar = hashlib.sha512(PasswordVar).hexdigest()
 
     def Status():
@@ -181,7 +191,7 @@ def Login():
             lis = data.split(SEPARATOR)
             if lis[0] == 'bool' and lis[1] == 'true':
                 if lis[2] == "true":
-                    print(user)
+                    Clear()
                     print(f"Logged in as {user}")
                     global User, UserVar
                     User = user
@@ -207,22 +217,21 @@ def Clear():
 
 
 def Main():
-    print("""Welcome to home server commandline interface\n[+]Create account (C)\n[*]Login (L)\n[-]Exit (E)""")
+    print("Welcome to home server commandline interface\n[+]Create account (C)\n[*]Login (L)\n[-]Exit (E)")
     while True:
         Cmd = input("Server > ")
         Cmd = Cmd.lower()
         if Cmd == 'c':
             Create()
             Clear()
-            print("""Welcome to home server commandline interface\n[+]Create account (C)\n[*]Login (L)\n[-]Exit (E)""")
+            print("Welcome to home server commandline interface\n[+]Create account (C)\n[*]Login (L)\n[-]Exit (E)")
         elif Cmd == 'l':
             Login()
             if User is not None:
-                Clear()
                 break
             else:
                 Clear()
-                print("""Welcome to home server commandline interface\n[+]Create account (C)\n[*]Login (L)\n[-]Exit (E)""")
+                print("Welcome to home server commandline interface\n[+]Create account (C)\n[*]Login (L)\n[-]Exit (E)")
         elif Cmd == 'e':
             Socket.close()
             exit(0)
@@ -400,7 +409,7 @@ def Terminal():
             Clear()
         elif command == 'stat':
             Socket.send(f"stat".encode())
-            print(StringDecoder())
+            print(StringDecoder().replace(EOS,""))
         elif command == 'help':
             print("""Dir - shows the file in the current directory
 cd - used to change your current directory followed by the directory to which you want to move
@@ -409,7 +418,8 @@ SendFile - send file to the current directory followed by file path (Absolute pa
 SendDir - send all the file in the directory followed by directory name (Absolute paths)
 DownloadFile - download file from the server followed by file name
 DownloadDir - download all the file in the current directory
-Logout - Logout from the cli
+Stat - show used space and total size 
+Logout - logout from the cli
 Clear - clear the terminal screen
 help - show info and command""")
         elif command == 'exit' or command == 'e':
@@ -419,5 +429,29 @@ help - show info and command""")
             print(f"Unknown command {cmd}. For help type help")
 
 
-Main()
-Terminal()
+Clean()
+argument = sys.argv[1:]
+option = ['IP =','Port =']
+try:
+    arguments,values = getopt.getopt(argument,"hmo:",option)
+    for CurrentArgument,CurrentValue in arguments:
+        if CurrentArgument == "--IP ":
+            HOST = CurrentValue
+
+        if CurrentArgument == "--Port ":
+            PORT = int(CurrentValue)
+
+    if PORT is None:
+        print("Port number is not defined")
+        exit(-1)
+    if HOST is None:
+        print("IP is not defined")
+
+    Socket = socket.socket()
+    Socket.connect((HOST, PORT))
+    Socket.send("Connect".encode())
+    Clear()
+    Main()
+    Terminal()
+except getopt.error as error:
+    print(str(error))
