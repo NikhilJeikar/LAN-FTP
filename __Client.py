@@ -1,4 +1,4 @@
-<<<<<<<< HEAD:__Client.py
+
 import getopt
 import hashlib
 import os
@@ -456,7 +456,7 @@ try:
     Terminal()
 except getopt.error as error:
     print(str(error))
-========
+
 import socket
 import os
 import tempfile
@@ -493,4 +493,4 @@ def Run():
     os.system(f"python {temp.name} --Port {PORT} --IP {IP}")
 
 Run()
->>>>>>>> ad4def8... 1.0.0:Client.py
+
